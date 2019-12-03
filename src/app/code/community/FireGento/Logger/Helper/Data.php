@@ -94,24 +94,24 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
      */
     public function getMappedTargets($filename)
     {
+        $targets = array();
         if ($this->_targetMap === null) {
             $targetMap = $this->getLoggerConfig('general/target_map');
             if ($targetMap && ($targetMap = @unserialize($targetMap))) {
-                $targets = array();
-                foreach ($targetMap as $map) {
-                    if (@preg_match('/^'.$map['pattern'].'$/', $filename)) {
-                        $targets[$map['target']] = (int) $map['backtrace'];
-                        if ((int) $map['stop_on_match']) {
-                            break;
-                        }
-                    }
-                }
                 $this->_targetMap = $targetMap;
             } else {
                 $this->_targetMap = false;
             }
         }
-        return $this->_targetMap;
+        foreach ($this->_targetMap as $map) {
+            if (@preg_match('/^'.$map['pattern'].'$/', $filename)) {
+                $targets[$map['target']] = (int) $map['backtrace'];
+                if ((int) $map['stop_on_match']) {
+                    break;
+                }
+            }
+        }
+        return $targets;
     }
 
     /**
@@ -170,7 +170,7 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
             ->setStoreCode(Mage::app()->getStore()->getCode());
 
         // Add admin user data
-        if (Mage::app()->getStore()->isAdmin() && isset($_SESSION)) {
+        if (Mage::app()->getStore()->isAdmin() && isset($_SESSION) && isset($_SESSION['admin'])) {
             $session = Mage::getSingleton('admin/session');
             if ($session->isLoggedIn()) {
                 $event->setAdminUserId($session->getUser()->getId());
