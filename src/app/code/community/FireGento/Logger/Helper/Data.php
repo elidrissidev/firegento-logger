@@ -100,7 +100,7 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
             if ($targetMap && ($targetMap = @unserialize($targetMap))) {
                 $this->_targetMap = $targetMap;
             } else {
-                $this->_targetMap = false;
+                $this->_targetMap = [];
             }
         }
         foreach ($this->_targetMap as $map) {
