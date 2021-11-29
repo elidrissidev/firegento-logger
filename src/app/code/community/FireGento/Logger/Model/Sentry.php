@@ -84,7 +84,11 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
             $options            = [
                 'trace'       => $this->_enableBacktrace,
                 'curl_method' => $helper->getLoggerConfig('sentry/curl_method'),
+                'prefixes'    => [BP],
             ];
+            if ($environment = trim($helper->getLoggerConfig('sentry/environment'))) {
+                $options['environment'] = $environment;
+            }
             self::$_ravenClient = new Raven_Client($dsn, $options);
             self::$_ravenClient->setAppPath(dirname(BP));
             self::$_ravenClient->trace = TRUE;
@@ -117,7 +121,7 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
             /**
              * Get message priority
              */
-            if ( ! isset($event['priority'])) {
+            if ( ! isset($event['priority']) || $event['priority'] === Zend_Log::ERR ) {
                 $this->_assumePriorityByMessage($event);
             }
             $priority = isset($event['priority']) ? $event['priority'] : 3;
@@ -188,10 +192,18 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
      */
     protected function _assumePriorityByMessage(&$event)
     {
-        if (stripos($event['message'], "warn") === 0) {
+        if (
+            stripos($event['message'], "warn") === 0 ||
+            stripos($event['message'], "user warn") === 0
+        ) {
             $event['priority'] = 4;
         }
-        else if (stripos($event['message'], "notice") === 0) {
+        else if (
+            stripos($event['message'], "notice") === 0 ||
+            stripos($event['message'], "user notice") === 0 ||
+            stripos($event['message'], "strict notice") === 0 ||
+            stripos($event['message'], "deprecated") === 0
+        ) {
             $event['priority'] = 5;
         }
 
