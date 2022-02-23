@@ -305,7 +305,6 @@ confirmation]]></filter_request_data>
                 <type>magento-log</type>
             </redis>
             <sentry>
-                <curl_method>async</curl_method>
                 <priority>4</priority>
             </sentry>
             <airbrake>
