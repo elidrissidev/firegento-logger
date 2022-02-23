@@ -1,0 +1,24 @@
+<?php /* @var $this Mage_Core_Block_Template */ ?>
+<?php if (Mage::getStoreConfigFlag('logger/sentry/adminhtml_enabled') && Mage::getStoreConfig('logger/sentry/public_dsn')): ?>
+<script
+  src="https://browser.sentry-cdn.com/6.17.9/bundle.min.js"
+  integrity="sha384-bg8ATkDzxNiciak2tVJV/r+DHguxvOKHQqRi2SKP2mc8IOZphuG/bYdsyBm+KQC3"
+  crossorigin="anonymous"
+></script>
+<script type="text/javascript">
+Sentry.init({
+  dsn: <?= json_encode(Mage::getStoreConfig('logger/sentry/public_dsn')) ?>,
+  debug: <?php if (Mage::getIsDeveloperMode()): ?>true<?php else: ?>false<?php endif; ?>,
+  attachStacktrace: true,
+  tracesSampleRate: 1.0,
+});
+<?php if (Mage::getSingleton('admin/session')->isLoggedIn()): ?>
+Sentry.configureScope(scope => {
+    scope.setUser({
+        id: <?= intval(Mage::getSingleton('admin/session')->getUser()->getId()) ?>,
+        email: '<?= $this->jsQuoteEscape(Mage::getSingleton('admin/session')->getUser()->getEmail()) ?>'
+    })
+});
+<?php endif; ?>
+</script>
+<?php endif ?>

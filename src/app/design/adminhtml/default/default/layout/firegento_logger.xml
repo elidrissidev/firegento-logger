@@ -21,10 +21,10 @@
 <layout>
     <default>
         <reference name="head">
-            <!-- Call to $this->getChildHtml('firegento_logger_sentry') must be added to head.phtml -->
+            <!-- Call to $this->getChildHtml('firegento_logger_sentry_sdk') must be added to head.phtml -->
             <block type="core/template"
-                   name="firegento_logger_sentry"
-                   template="firegento_logger/raven.phtml"
+                   name="firegento_logger_sentry_sdk"
+                   template="firegento_logger/sentry.sdk.phtml"
             />
         </reference>
     </default>
