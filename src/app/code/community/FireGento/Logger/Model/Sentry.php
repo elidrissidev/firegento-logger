@@ -20,7 +20,8 @@
  */
 
 /**
- * Model for Sentry logging
+ * Model for Sentry 3 logging.
+ * Requires installing sentry/sdk via composer!
  *
  * @category FireGento
  * @package  FireGento_Logger
@@ -28,13 +29,24 @@
  *
  * see: https://github.com/magento-hackathon/LoggerSentry
  */
+
+use Sentry\EventHint;
+use Sentry\SentrySdk;
+use Sentry\Serializer\RepresentationSerializer;
+use Sentry\Severity;
+use Sentry\StacktraceBuilder;
+use Sentry\State\Scope;
+use function Sentry\captureException;
+use function Sentry\captureMessage;
+use function Sentry\configureScope;
+use function Sentry\init;
+
 class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
 {
-
     /**
-     * @var Raven_Client
+     * @var bool
      */
-    protected static $_ravenClient;
+    protected static $_isInitialized;
 
     protected $_priorityToLevelMapping = [
         0 /*Zend_Log::EMERG*/  => 'fatal',
@@ -47,6 +59,7 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
         7 /*Zend_Log::DEBUG*/  => 'debug',
     ];
 
+    /** @var string|null */
     protected $_fileName;
 
     public function __construct($fileName = NULL)
@@ -55,47 +68,75 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
     }
 
     /**
-     * Retrieve Raven_Client instance
-     *
-     * @return Raven_Client|null
-     */
-    public function getRavenClient()
-    {
-        return self::$_ravenClient;
-    }
-
-    /**
-     * Create Raven_Client instance
+     * Init Sentry SDK
      *
      * @return bool
-     * @throws Raven_Exception
      */
-    public function initRavenClient()
+    public function initSentrySdk()
     {
-        if (is_null(self::$_ravenClient)) {
-            $helper             = Mage::helper('firegento_logger');
-            $dsn                = $helper->getLoggerConfig('sentry/public_dsn');
+        if (is_null(self::$_isInitialized)) {
+            $helper = Mage::helper('firegento_logger');
+            $dsn = $helper->getLoggerConfig('sentry/public_dsn');
             if ( ! $dsn) {
-                self::$_ravenClient = FALSE;
+                self::$_isInitialized = FALSE;
                 return FALSE;
             }
-            require_once Mage::getBaseDir('lib') . DS . 'sentry' . DS . 'lib' . DS . 'Raven' . DS . 'Autoloader.php';
-            spl_autoload_register(array('Raven_Autoloader', 'autoload'), true, true);
-            $options            = [
-                'trace'       => $this->_enableBacktrace,
-                'curl_method' => $helper->getLoggerConfig('sentry/curl_method'),
-                'prefixes'    => [BP],
-            ];
-            if ($environment = trim($helper->getLoggerConfig('sentry/environment'))) {
-                $options['environment'] = $environment;
+
+            // Create a new Client and Hub and retrieve the client options
+            init(['dsn' => $dsn]);
+            $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
+
+            // Set priority level filter
+            $priority = $helper->getLoggerConfig('sentry/priority');
+            if ($priority === 'default') {
+                $priority = $helper->getLoggerConfig('general/priority');
             }
-            self::$_ravenClient = new Raven_Client($dsn, $options);
-            self::$_ravenClient->setAppPath(dirname(BP));
-            self::$_ravenClient->trace = TRUE;
-            $error_handler = new Raven_ErrorHandler(self::$_ravenClient, false);
-            $error_handler->registerShutdownFunction();
+            $level = $this->_priorityToLevelMapping[$priority];
+            configureScope(function (Scope $scope) use ($level): void {
+                $scope->setLevel(new Severity($level));
+            });
+
+            // Strip base path from filenames
+            $options->setPrefixes([BP]);
+
+            // Set environment from the configuration (think staging vs prod or similar)
+            if ($environment = trim($helper->getLoggerConfig('sentry/environment'))) {
+                $options->setEnvironment($environment);
+            }
+
+            // Attach stacktrace
+            $options->setAttachStacktrace(TRUE);
+
+            // Send personally identifiable information
+            $options->setSendDefaultPii(TRUE);
+
+            // Add session data to the user info
+            if (function_exists('session_id') && session_id()) {
+                configureScope(function (Scope $scope): void {
+                    $user = array(
+                        'id' => session_id(),
+                    );
+                    if ( ! empty($_SERVER['REMOTE_ADDR'])) {
+                        $user['ip_address'] = $_SERVER['REMOTE_ADDR'];
+                    }
+                    if ( ! empty($_SESSION)) {
+                        $user['data'] = $_SESSION;
+                    }
+                    $scope->setUser($user);
+                });
+            }
+
+            // Add the installation code as indexed and searchable tag
+            if ($installCode = Mage::helper('mwe')->getInstallCode()) {
+                configureScope(function (Scope $scope) use ($installCode): void {
+                    $scope->setTag('instance_uid', $installCode);
+                });
+            }
+
+            self::$_isInitialized = TRUE;
         }
-        return !!self::$_ravenClient;
+
+        return !! self::$_isInitialized;
     }
 
     /**
@@ -114,70 +155,41 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
         try {
             Mage::helper('firegento_logger')->addEventMetadata($event, NULL, $this->_enableBacktrace);
 
-            if ( ! $this->initRavenClient()) {
+            if ( ! $this->initSentrySdk()) {
                 return;
             }
 
-            /**
-             * Get message priority
-             */
+            // Get message priority
             if ( ! isset($event['priority']) || $event['priority'] === Zend_Log::ERR ) {
                 $this->_assumePriorityByMessage($event);
             }
             $priority = isset($event['priority']) ? $event['priority'] : 3;
 
-            //
-            // Add extra data and tags
-            //
-            $data = [
-                'tags' => [
-                    'target' => $this->_fileName,
-                    'storeCode' => $event->getStoreCode() ?: 'unknown',
-                    'requestId' => $event->getRequestId(),
-                ],
-                'extra' => [
-                    'timeElapsed' => $event->getTimeElapsed(),
-                ]
-            ];
+            // Add extra data
+            $data['extra']['timeElapsed'] = $event->getTimeElapsed();
             if ($event->getAdminUserId()) $data['extra']['adminUserId'] = $event->getAdminUserId();
             if ($event->getAdminUserName()) $data['extra']['adminUserName'] = $event->getAdminUserName();
-
             if (class_exists('Mage')) {
-                if (Mage::registry('logger_data_tags')) {
-                    $data['tags'] = array_merge($data['tags'], Mage::registry('logger_data_tags'));
-                }
                 if (Mage::registry('logger_data_extra')) {
                     $data['extra'] = array_merge($data['extra'], Mage::registry('logger_data_extra'));
                 }
             }
 
             if ($event->getException()) {
-                $eventId = self::$_ravenClient->captureException($event->getException(), $data);
+                captureException($event->getException(), EventHint::fromArray($data));
             } else {
-                $data['level'] = $this->_priorityToLevelMapping[$priority];
-
-                // Make Raven error handler transparent
+                $level = $this->_priorityToLevelMapping[$priority];
+                // Prepare EventHint object
                 $backtrace = $event->getBacktraceArray() ?: TRUE;
-                if (is_array($backtrace) && count($backtrace) > 3) {
-                    if (  $backtrace[0]['function'] == 'log'
-                       && $backtrace[1]['function'] == 'mageCoreErrorHandler'
-                        && isset($backtrace[2]['class'])
-                        && $backtrace[2]['class'] == 'Raven_Breadcrumbs_ErrorHandler'
-                    ) {
-                        array_shift($backtrace);
-                        array_shift($backtrace);
-                    }
+                $eventHint = new EventHint();
+                if (is_array($backtrace)) {
+                    $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
+                    $stacktraceBuilder = new StacktraceBuilder($options, new RepresentationSerializer($options));
+                    $eventHint->stacktrace = $stacktraceBuilder->buildFromBacktrace($backtrace, __FILE__, __LINE__);
                 }
-
-                $eventId = self::$_ravenClient->captureMessage(
-                    $event['message'],
-                    [],
-                    $data,
-                    $backtrace
-                );
+                // Capture message
+                captureMessage($event['message'], new Severity($level), $eventHint);
             }
-            Mage::unregister('logger_raven_last_event_id');
-            Mage::register('logger_raven_last_event_id', $eventId);
 
         } catch (Exception $e) {
             throw new Zend_Log_Exception($e->getMessage(), $e->getCode());
@@ -185,7 +197,7 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
     }
 
     /**
-     * Try to attach a priority # based on the error message string (since sometimes it is not specified)
+     * Try to attach a priority # based on the error message string (since sometimes it is not specified).
      *
      * @param $event
      * @return $this
@@ -209,5 +221,4 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
 
         return $this;
     }
-
 }
