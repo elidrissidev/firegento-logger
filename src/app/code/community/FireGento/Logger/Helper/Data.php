@@ -97,7 +97,7 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
     {
         if ($this->_targetMap === null) {
             $targetMap = $this->getLoggerConfig('general/target_map');
-            if ($targetMap && ($targetMap = @unserialize($targetMap))) {
+            if ($targetMap && ($targetMap = @unserialize($targetMap, ['allowed_classes' => false]))) {
                 $this->_targetMap = $targetMap;
             } else {
                 $this->_targetMap = [];
@@ -388,7 +388,7 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
         if (! $notificationRulesSerialized) {
             return array();
         }
-        $notificationRules = unserialize($notificationRulesSerialized);
+        $notificationRules = unserialize($notificationRulesSerialized, ['allowed_classes' => false]);
 
         $this->_notificationRules = $notificationRules;
         return $notificationRules;
