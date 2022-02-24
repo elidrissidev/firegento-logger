@@ -76,7 +76,7 @@ class FireGento_Logger_Model_Queue extends Zend_Log_Writer_Abstract
             //writer instantiation
             foreach ($targets as $target) {
                 $class = (string) Mage::app()->getConfig()->getNode('global/log/core/writer_models/'.$target.'/class');
-                if ($class) {
+                if ($class && class_exists($class)) {
                     $writer = new $class($filename);
                     //add filter to target
                     $helper->addPriorityFilter($writer, $target.'/priority');
