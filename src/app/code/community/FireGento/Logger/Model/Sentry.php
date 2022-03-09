@@ -41,6 +41,7 @@ use Sentry\State\Scope;
 use function Sentry\captureException;
 use function Sentry\captureMessage;
 use function Sentry\configureScope;
+use function Sentry\withScope;
 use function Sentry\init;
 
 class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
@@ -174,33 +175,43 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
             if ( ! isset($event['priority']) || $event['priority'] === Zend_Log::ERR ) {
                 $this->_assumePriorityByMessage($event);
             }
-            $priority = isset($event['priority']) ? $event['priority'] : 3;
+            $priority = $event['priority'] ?? Zend_Log::ERR;
+            $level = $this->_priorityToLevelMapping[$priority] ?? $this->_priorityToLevelMapping[Zend_Log::ERR];
 
             // Add extra data
-            $data['extra']['timeElapsed'] = $event->getTimeElapsed();
-            if ($event->getAdminUserId()) $data['extra']['adminUserId'] = $event->getAdminUserId();
-            if ($event->getAdminUserName()) $data['extra']['adminUserName'] = $event->getAdminUserName();
-            if (class_exists('Mage')) {
-                if (Mage::registry('logger_data_extra')) {
-                    $data['extra'] = array_merge($data['extra'], Mage::registry('logger_data_extra'));
+            withScope(function (Scope $scope) use ($event, $level): void {
+                $scope->setLevel(new Severity($level));
+                $scope->setTag('target', $this->_fileName);
+                $scope->setTag('request_id', $event->getRequestId());
+                $scope->setTag('store_code', $event->getStoreCode() ?: 'unknown');
+                $scope->setExtra('time_elapsed', $event->getTimeElapsed());
+                $user = [];
+                if ($event->getAdminUserId()) {
+                    $user['id'] = $event->getAdminUserId();
                 }
-            }
-
-            if ($event->getException()) {
-                captureException($event->getException(), EventHint::fromArray($data));
-            } else {
-                $level = $this->_priorityToLevelMapping[$priority];
-                // Prepare EventHint object
-                $backtrace = $event->getBacktraceArray() ?: TRUE;
-                $eventHint = new EventHint();
-                if (is_array($backtrace)) {
+                if ($event->getAdminUserName()) {
+                    $user['username'] = $event->getAdminUserName();
+                }
+                $scope->setUser($user);
+                if (class_exists('Mage') && Mage::registry('logger_data_extra')) {
+                    $scope->setExtras(Mage::registry('logger_data_extra'));
+                }
+                if ($event->getException()) {
+                    captureException($event->getException());
+                } else {
                     $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
                     $stacktraceBuilder = new StacktraceBuilder($options, new RepresentationSerializer($options));
-                    $eventHint->stacktrace = $stacktraceBuilder->buildFromBacktrace($backtrace, __FILE__, __LINE__);
+                    $eventHint = EventHint::fromArray([
+                        'stacktrace' => $stacktraceBuilder->buildFromBacktrace(
+                            $event->getBacktraceArray() ?: [],
+                            $event->getFile() ?? \Sentry\Frame::INTERNAL_FRAME_FILENAME,
+                            $event->getLine() ?? 0
+                        )
+                    ]);
+                    // Capture message
+                    captureMessage($event['message'], NULL, $eventHint);
                 }
-                // Capture message
-                captureMessage($event['message'], new Severity($level), $eventHint);
-            }
+            });
 
         } catch (Exception $e) {
             throw new Zend_Log_Exception($e->getMessage(), $e->getCode());
