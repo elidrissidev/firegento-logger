@@ -31,6 +31,8 @@
  */
 
 use Sentry\EventHint;
+use Sentry\Integration\ErrorListenerIntegration;
+use Sentry\Integration\IntegrationInterface;
 use Sentry\SentrySdk;
 use Sentry\Serializer\RepresentationSerializer;
 use Sentry\Severity;
@@ -83,7 +85,15 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
             }
 
             // Create a new Client and Hub and retrieve the client options
-            init(['dsn' => $dsn]);
+            init([
+                'dsn' => $dsn,
+                // Disable Sentry's error handler to avoid duplicate logged errors
+                'integrations' => static function (array $integrations) {
+                    return array_filter($integrations, static function (IntegrationInterface $integration) {
+                        return ! $integration instanceof ErrorListenerIntegration;
+                    });
+                },
+            ]);
             $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
 
             // Set priority level filter
