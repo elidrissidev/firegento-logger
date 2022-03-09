@@ -812,7 +812,7 @@
                             <show_in_website>1</show_in_website>
                             <show_in_store>1</show_in_store>
                             <comment><![CDATA[
-                                This will add the raven.js client script to the page so that frontend errors will be captured
+                                This will add the Sentry client script to the page so that frontend errors will be captured
                                 and transmitted to Sentry.io using the above Public DSN.
                             ]]></comment>
                         </frontend_enabled>
@@ -823,8 +823,8 @@
                             <sort_order>40</sort_order>
                             <show_in_default>1</show_in_default>
                             <comment><![CDATA[
-                                This will add the raven.js client script to the page so that adminhtml errors will be captured
-                                and transmitted to Sentry.io Public DSN.<br/>
+                                This will add the Sentry client script to the page so that adminhtml errors will be captured
+                                and transmitted to Sentry.io using the above Public DSN.
                                 <br/>
                                 You must add this code to your page/head.phtml adminhtml template:<br/>
                                 <code>&lt;?php echo $this->getChildHtml('firegento_logger_sentry') ?&gt;</code>
