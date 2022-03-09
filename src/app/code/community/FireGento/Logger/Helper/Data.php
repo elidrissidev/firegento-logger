@@ -50,6 +50,14 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
     }
 
     /**
+     * @return int
+     */
+    public function getMaxBacktraceLines()
+    {
+        return $this->_maxBacktraceLines;
+    }
+
+    /**
      * Return a random id for this request
      */
     public function getRequestId()
@@ -198,80 +206,65 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
         // Add backtrace data as array only for now, populate 'file' and 'line'
         if ( ! $event->getBacktraceArray()) {
             // Find file and line where message originated from and optionally get backtrace lines
-            $basePath = dirname(Mage::getBaseDir()).'/'; // 1 level up in case deployed with symlinks from parent directory
-            $nextIsFirst = false;                        // Skip backtrace frames until we reach Mage::log(Exception)
-            $recordBacktrace = false;
-
-            $backtraceFrames = array();
-            if (version_compare(PHP_VERSION, '5.4.0') < 0) {
-                $debugBacktrace = debug_backtrace();
-            } else {
-                $debugBacktrace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT,
-                    $this->_maxBacktraceLines + 10
-                );
-            }
-            array_shift($debugBacktrace); // FireGento_Logger_Helper_Data::addEventMetadata
-            array_shift($debugBacktrace); // FireGento_Logger_Model_*::_write
-            array_shift($debugBacktrace); // Zend_Log_Write_Abstract::write
-            array_shift($debugBacktrace); // FireGento_Logger_Model_Queue::_write
-            array_shift($debugBacktrace); // Zend_Log_Writer_Abstract::write
-            array_shift($debugBacktrace); // Zend_Log::log
-            foreach ($debugBacktrace as $frame) {
-                if (isset($frame['class']) && $frame['class'] == 'Zend_Log' && $frame['function'] == 'log') {
-                    array_shift($debugBacktrace);
+            $debugBacktrace = debug_backtrace();
+            // Attempt to remove extra backtrace frames
+            $firstFrameIndex = 0;
+            foreach ($debugBacktrace as $index => $frame) {
+                // Find the first Zend_Log::log frame
+                if ($firstFrameIndex === 0) {
+                    if (($frame['class'] ?? NULL) === Zend_Log::class && $frame['function'] === 'log') {
+                        $firstFrameIndex = $index;
+                    }
                     continue;
                 }
-                if (($nextIsFirst && $frame['function'] == 'logException')
-                    || (
-                        isset($frame['type'])
-                        && $frame['type'] == '::'
-                        && $frame['class'] == 'Mage'
-                        && substr($frame['function'], 0, 3) == 'log'
-                    )
-                ) {
-                    if (isset($frame['file']) && isset($frame['line'])) {
-                        $event
-                            ->setFile(str_replace($basePath, '', $frame['file']))
-                            ->setLine($frame['line']);
-                        if ($this->_maxBacktraceLines) {
-                            $backtraceFrames = array($frame);
-                        } elseif ($nextIsFirst) {
-                            break;
-                        } else {
-                            continue;
-                        }
-                    }
-
-                    // Don't record backtrace for Mage::logException
-                    if ($frame['function'] == 'logException') {
-                        if (isset($frame['args'][0])) {
-                            $event->setException($frame['args'][0]);
-                        }
+                // Next, Mage::log or Mage::logException
+                if (($frame['class'] ?? NULL) === Mage::class) {
+                    if ($frame['function'] === 'log') {
+                        $firstFrameIndex = $index;
                         continue;
                     }
-
-                    $nextIsFirst = true;
-                    $recordBacktrace = true;
-                    continue;
-                }
-
-                if ($recordBacktrace) {
-                    if (count($backtraceFrames) >= $this->_maxBacktraceLines) {
+                    if ($frame['function'] === 'logException' && isset($frame['args'][0])) {
+                        $event->setException($frame['args'][0]);
+                        $debugBacktrace = []; // Don't record backtrace for Mage::logException
+                        $firstFrameIndex = 0;
                         break;
                     }
+                }
+                // Next, an error handler
+                if ((count($frame['args']) === 4 || count($frame['args']) === 5)
+                    && array_key_exists(2, $frame['args']) && ($frame['file'] ?? NULL) === $frame['args'][2]
+                    && array_key_exists(3, $frame['args']) && ($frame['line'] ?? NULL) === $frame['args'][3]
+                ) {
+                    $firstFrameIndex = $index;
+                    continue;
+                }
+                // Next, an empty frame from an internal function
+                if (empty($frame['file']) && empty($frame['line'])) {
+                    // Copy the file and line from the next frame to match the behavior of exceptions
+                    $debugBacktrace[$index]['file'] = $debugBacktrace[$index + 1]['file'] ?? NULL;
+                    $debugBacktrace[$index]['line'] = $debugBacktrace[$index + 1]['line'] ?? NULL;
+                    $firstFrameIndex = $index;
+                    continue;
+                }
+                break;
+            }
+            $event->setFile($debugBacktrace[$firstFrameIndex]['file'] ?? NULL);
+            $event->setLine($debugBacktrace[$firstFrameIndex]['line'] ?? NULL);
+            $firstFrameIndex++;
 
-                    // Avoid exposing passwords in backtrace
-                    if (preg_match('/^(login|authenticate|setPassword|validatePassword)$/', $frame['function'])) {
-                        foreach ($frame['args'] as &$arg) {
-                            if (is_string($arg)) {
-                                $arg = '**redacted**';
-                            }
+            $backtraceFrames = array_slice($debugBacktrace, $firstFrameIndex);
+            foreach ($backtraceFrames as &$frame) {
+                // Avoid exposing passwords in backtrace
+                if (preg_match('/^(login|authenticate|setPassword|validatePassword)$/', $frame['function'])) {
+                    foreach ($frame['args'] as &$arg) {
+                        if (is_string($arg)) {
+                            $arg = '**redacted**';
                         }
                     }
-
-                    $backtraceFrames[] = $frame;
+                    unset($arg);
                 }
             }
+            unset($frame);
             $event->setBacktraceArray($backtraceFrames);
         }
 

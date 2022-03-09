@@ -97,7 +97,11 @@ class FireGento_Logger_Model_Event extends Varien_Object implements ArrayAccess
             if ($this->getBacktraceArray()) {
                 $basePath = dirname(Mage::getBaseDir()).'/'; // 1 level up in case deployed with symlinks from parent directory
                 $backtrace = array();
+                $maxBacktraceLines = Mage::helper('firegento_logger')->getMaxBacktraceLines();
                 foreach ($this->getBacktraceArray() as $index => $frame) {
+                    if ($index + 1 > $maxBacktraceLines) {
+                        break;
+                    }
                     // Set file
                     if (empty($frame['file'])) {
                         $frame['file'] = 'unknown_file';
