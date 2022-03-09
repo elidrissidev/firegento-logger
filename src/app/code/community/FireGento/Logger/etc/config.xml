@@ -191,10 +191,27 @@
                     </init_logger_client>
                 </observers>
             </controller_action_predispatch>
+            <init_api>
+                <observers>
+                    <init_logger_client>
+                        <class>firegento_logger/observer</class>
+                        <method>initLoggerClient</method>
+                    </init_logger_client>
+                </observers>
+            </init_api>
+            <init_cli>
+                <observers>
+                    <init_logger_client>
+                        <class>firegento_logger/observer</class>
+                        <method>initLoggerClient</method>
+                    </init_logger_client>
+                </observers>
+            </init_cli>
         </events>
     </global>
     <crontab>
         <events>
+            <!-- Note that this event is part of AOE_Scheduler, not core Magento -->
             <cron_before>
                 <observers>
                     <init_logger_client>
