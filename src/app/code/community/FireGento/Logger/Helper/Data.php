@@ -181,6 +181,12 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
                 $event->setAdminUserName($session->getUser()->getName());
             }
         }
+        // Add API user data
+        else if (Mage::getSingleton('api/session')->isLoggedIn()) {
+            $user = Mage::getSingleton('api/session')->getUser();
+            $event->setAdminUserId($user->getId());
+            $event->setAdminUserName($user->getUsername());
+        }
 
         // Add request time
         if (isset($_SERVER['REQUEST_TIME_FLOAT'])) {
