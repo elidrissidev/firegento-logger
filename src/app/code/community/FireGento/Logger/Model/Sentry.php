@@ -98,16 +98,6 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
             ]);
             $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
 
-            // Set priority level filter
-            $priority = $helper->getLoggerConfig('sentry/priority');
-            if ($priority === 'default') {
-                $priority = $helper->getLoggerConfig('general/priority');
-            }
-            $level = $this->_priorityToLevelMapping[$priority];
-            configureScope(function (Scope $scope) use ($level): void {
-                $scope->setLevel(new Severity($level));
-            });
-
             // Strip base path from filenames
             $options->setPrefixes([BP]);
 
@@ -152,6 +142,19 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
     }
 
     /**
+     * @return int
+     */
+    protected function _getMaxPriority()
+    {
+        $helper = Mage::helper('firegento_logger');
+        $maxPriority = $helper->getLoggerConfig('sentry/priority');
+        if ($maxPriority === 'default') {
+            $maxPriority = $helper->getLoggerConfig('general/priority');
+        }
+        return is_numeric($maxPriority) ? (int) $maxPriority : Zend_Log::ERR;
+    }
+
+    /**
      * Write a message to the log
      *
      * Sentry has own build-in processing the logs.
@@ -176,6 +179,9 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
                 $this->_assumePriorityByMessage($event);
             }
             $priority = $event['priority'] ?? Zend_Log::ERR;
+            if ($priority > $this->_getMaxPriority()) {
+                return;
+            }
             $level = $this->_priorityToLevelMapping[$priority] ?? $this->_priorityToLevelMapping[Zend_Log::ERR];
 
             // Add extra data
