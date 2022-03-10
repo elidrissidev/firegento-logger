@@ -94,7 +94,7 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
                         return ! $integration instanceof ErrorListenerIntegration;
                     });
                 },
-                'release' => 'shipstream-server@'.Mage::helper('core')->getAppVersion(),
+                'release' => Mage::helper('core')->getAppRelease(),
             ]);
             $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
 

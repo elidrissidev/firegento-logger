@@ -10,15 +10,19 @@ Sentry.init({
   dsn: <?= json_encode(Mage::getStoreConfig('logger/sentry/public_dsn')) ?>,
   debug: <?php if (Mage::getIsDeveloperMode()): ?>true<?php else: ?>false<?php endif; ?>,
   attachStacktrace: true,
-  tracesSampleRate: 1.0,
+  release: <?= json_encode(Mage::helper('core')->getAppRelease()) ?>,
+  environment: <?= json_encode(trim(Mage::helper('firegento_logger')->getLoggerConfig('sentry/environment')) ?: NULL) ?>,
 });
-<?php if (Mage::getSingleton('admin/session')->isLoggedIn()): ?>
 Sentry.configureScope(scope => {
+    <?php if (Mage::getSingleton('admin/session')->isLoggedIn()): ?>
     scope.setUser({
-        id: <?= intval(Mage::getSingleton('admin/session')->getUser()->getId()) ?>,
-        email: '<?= $this->jsQuoteEscape(Mage::getSingleton('admin/session')->getUser()->getEmail()) ?>'
+      id: <?= intval(Mage::getSingleton('admin/session')->getUser()->getId()) ?>,
+      username: <?= json_encode(Mage::getSingleton('admin/session')->getUser()->getUsername()) ?>,
     })
+    <?php endif; ?>
+    <?php if ($installCode = Mage::helper('mwe')->getInstallCode()): ?>
+    scope.setTag('instance_uid', <?= json_encode($installCode) ?>);
+    <?php endif; ?>
 });
-<?php endif; ?>
 </script>
 <?php endif ?>
