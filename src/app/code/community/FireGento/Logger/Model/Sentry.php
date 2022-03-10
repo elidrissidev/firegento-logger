@@ -188,9 +188,9 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
             withScope(function (Scope $scope) use ($event, $level): void {
                 $scope->setLevel(new Severity($level));
                 $scope->setTag('target', $this->_fileName);
-                $scope->setTag('request_id', $event->getRequestId());
-                $scope->setTag('store_code', $event->getStoreCode() ?: 'unknown');
-                $scope->setExtra('time_elapsed', $event->getTimeElapsed());
+                $scope->setTag('requestId', $event->getRequestId());
+                $scope->setTag('storeCode', $event->getStoreCode() ?: 'unknown');
+                $scope->setExtra('timeElapsed', $event->getTimeElapsed());
                 $user = [];
                 if ($event->getAdminUserId()) {
                     $user['id'] = $event->getAdminUserId();
