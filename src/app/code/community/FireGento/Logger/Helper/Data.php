@@ -225,7 +225,10 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
                     }
                     if ($frame['function'] === 'logException' && isset($frame['args'][0])) {
                         $event->setException($frame['args'][0]);
-                        $debugBacktrace = []; // Don't record backtrace for Mage::logException
+                        $debugBacktrace = [[ // Don't record backtrace for Mage::logException
+                            'file' => $event->getException()->getFile(),
+                            'line' => $event->getException()->getLine(),
+                        ]];
                         $firstFrameIndex = 0;
                         break;
                     }
