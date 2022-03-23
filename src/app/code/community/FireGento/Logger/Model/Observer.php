@@ -39,16 +39,6 @@ class FireGento_Logger_Model_Observer extends Varien_Object
     protected $init = true;
 
     /**
-     * Cron job for cleaning firegento log table
-     */
-    public function cleanLogsCron()
-    {
-        Mage::getResourceSingleton('firegento_logger/db_entry')->cleanLogs(
-            Mage::helper('firegento_logger')->getMaxDaysToKeep()
-        );
-    }
-
-    /**
      * Rotate all files in var/log which ends with .log
      */
     public function rotateLogs()

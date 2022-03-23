@@ -21,19 +21,11 @@
 <config>
     <modules>
         <FireGento_Logger>
-            <version>1.9.0</version>
+            <version>1.9.1</version>
         </FireGento_Logger>
     </modules>
     <crontab>
         <jobs>
-            <clean_logs>
-                <schedule>
-                    <cron_expr>15 0 * * *</cron_expr>
-                </schedule>
-                <run>
-                    <model>firegento_logger/observer::cleanLogsCron</model>
-                </run>
-            </clean_logs>
             <!--
             <rotate_logs>
                 <schedule>
@@ -75,9 +67,7 @@
             <logger_resource>
                 <class>FireGento_Logger_Model_Resource</class>
                 <entities>
-                    <db_entry>
-                        <table>advanced_logger</table>
-                    </db_entry>
+
                 </entities>
             </logger_resource>
         </models>
@@ -114,62 +104,10 @@
                         <label>Files (JSON Lines)</label>
                         <class>FireGento_Logger_Model_JsonStream</class>
                     </json>
-                    <mailconfig>
-                        <label>Mail</label>
-                        <class>FireGento_Logger_Model_Mail</class>
-                    </mailconfig>
-                    <db>
-                        <label>Database</label>
-                        <class>FireGento_Logger_Model_Db</class>
-                    </db>
-                    <xmpp>
-                        <label>XMPP</label>
-                        <class>FireGento_Logger_Model_Xmpp</class>
-                    </xmpp>
-                    <graylog2>
-                        <label>Graylog2 (experimental)</label>
-                        <class>FireGento_Logger_Model_Graylog2</class>
-                    </graylog2>
-                    <syslog translate="label">
-                        <label>Local Syslog</label>
-                        <class>FireGento_Logger_Model_Syslog</class>
-                    </syslog>
-                    <rsyslog>
-                        <label>Remote Syslog (UDP)</label>
-                        <class>FireGento_Logger_Model_Rsyslog</class>
-                    </rsyslog>
-                    <logglysyslog>
-                        <label>Loggly, via Remote Syslog (UDP)</label>
-                        <class>FireGento_Logger_Model_Logglysyslog</class>
-                    </logglysyslog>
-                    <logglyhttps>
-                        <label>Loggly, via HTTPS</label>
-                        <class>FireGento_Logger_Model_Logglyhttps</class>
-                    </logglyhttps>
-                    <papertrailsyslog>
-                        <label>Papertrail, via Remote Syslog (UDP)</label>
-                        <class>FireGento_Logger_Model_Papertrailsyslog</class>
-                    </papertrailsyslog>
-                    <chromelogger>
-                        <label>Chrome Logger</label>
-                        <class>FireGento_Logger_Model_Chromelogger</class>
-                    </chromelogger>
-                    <logstash>
-                        <label>Logstash Logger</label>
-                        <class>FireGento_Logger_Model_Logstash</class>
-                    </logstash>
-                    <redis>
-                        <label>Redis Logger</label>
-                        <class>FireGento_Logger_Model_Redis</class>
-                    </redis>
                     <sentry>
                         <label>Sentry</label>
                         <class>FireGento_Logger_Model_Sentry</class>
                     </sentry>
-                    <airbrake>
-                        <label>Airbrake</label>
-                        <class>FireGento_Logger_Model_Airbrake</class>
-                    </airbrake>
                 </writer_models>
             </core>
         </log>
@@ -256,77 +194,9 @@ confirmation]]></filter_request_data>
             <json>
                 <priority>default</priority>
             </json>
-            <mailconfig>
-                <priority>default</priority>
-            </mailconfig>
-            <db>
-                <priority>default</priority>
-                <max_days_to_keep>45</max_days_to_keep>
-            </db>
-            <xmpp>
-                <priority>default</priority>
-            </xmpp>
-            <graylog2>
-                <priority>default</priority>
-                <hostname>localhost</hostname>
-                <port>12201</port>
-                <chunk_size>1420</chunk_size>
-                <app_name>Magento/</app_name>
-            </graylog2>
-            <syslog>
-                <priority>default</priority>
-                <application>Magento/</application>
-                <facility>8</facility>
-            </syslog>
-            <rsyslog>
-                <priority>default</priority>
-                <timeout>5</timeout>
-                <app_name>Magento/</app_name>
-            </rsyslog>
-            <logglyhttps>
-                <priority>default</priority>
-                <hostname>logs-01.loggly.com</hostname>
-                <timeout>5</timeout>
-                <inputkey></inputkey>
-                <app_name>Magento/</app_name>
-            </logglyhttps>
-            <logglysyslog>
-                <priority>default</priority>
-                <hostname>logs-01.loggly.com</hostname>
-                <port>514</port>
-                <timeout>5</timeout>
-                <app_name>Magento/</app_name>
-            </logglysyslog>
-            <papertrailsyslog>
-                <priority>default</priority>
-                <hostname>logs.papertrailapp.com</hostname>
-                <port></port>
-                <app_name>Magento</app_name>
-            </papertrailsyslog>
-            <chrome>
-                <priority>default</priority>
-            </chrome>
-            <logstash>
-                <priority>default</priority>
-                <host>127.0.0.1</host>
-                <port>6666</port>
-                <protocol>udp</protocol>
-            </logstash>
-            <redis>
-                <priority>default</priority>
-                <host>127.0.0.1</host>
-                <port>6379</port>
-                <db>0</db>
-                <key>magento-log</key>
-                <password/>
-                <type>magento-log</type>
-            </redis>
             <sentry>
                 <priority>4</priority>
             </sentry>
-            <airbrake>
-                <timeout>60</timeout>
-            </airbrake>
         </logger>
     </default>
     <frontend>

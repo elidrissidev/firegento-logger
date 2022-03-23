@@ -25,24 +25,18 @@
                 <firegento_logger translate="title" module="firegento_logger">
                     <title>FireGento Logger</title>
                     <sort_order>60</sort_order>
-                    <action>adminhtml/logger/index</action>
                     <depends>
                         <config>logger/general/viewer_enabled</config>
                     </depends>
                     <children>
-                        <grid_viewer translate="title" module="firegento_logger">
-                            <title>View Error Log</title>
-                            <sort_order>10</sort_order>
-                            <action>adminhtml/logger/index</action>
-                        </grid_viewer>
                         <live_viewer translate="title" module="firegento_logger">
                             <title>Log Live Viewer</title>
-                            <sort_order>20</sort_order>
+                            <sort_order>10</sort_order>
                             <action>adminhtml/logger/liveView</action>
                         </live_viewer>
                         <report_viewer translate="title" module="firegento_logger">
                             <title>Report Viewer</title>
-                            <sort_order>30</sort_order>
+                            <sort_order>20</sort_order>
                             <action>adminhtml/logger/reportView</action>
                         </report_viewer>
                         <log_manager translate="title" module="firegento_logger">
@@ -61,10 +55,6 @@
                 <children>
                     <system>
                         <children>
-                            <logger translate="title" module="firegento_logger">
-                                <title>View Error Log</title>
-                                <sort_order>60</sort_order>
-                            </logger>
                             <config>
                                 <children>
                                     <logger translate="title" module="firegento_logger">

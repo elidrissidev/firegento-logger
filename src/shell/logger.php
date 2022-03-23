@@ -29,20 +29,6 @@ require_once 'abstract.php';
 class FireGento_Logger_Shell extends Mage_Shell_Abstract
 {
     /**
-     * Clean logs
-     */
-    protected function runClean()
-    {
-        $days = $this->getArg('days');
-        if (!$days) {
-            $days = Mage::helper('firegento_logger')->getMaxDaysToKeep();
-        }
-
-        $deleted = Mage::getResourceSingleton('firegento_logger/db_entry')->cleanLogs($days);
-        echo "Database log cleaned: kept $days days, deleted $deleted records." . PHP_EOL;
-    }
-
-    /**
      * Rotate log files
      */
     protected function runRotate()
@@ -68,9 +54,7 @@ class FireGento_Logger_Shell extends Mage_Shell_Abstract
      */
     public function run()
     {
-        if ($this->getArg('clean')) {
-            $this->runClean();
-        } elseif ($this->getArg('rotate')) {
+        if ($this->getArg('rotate')) {
             $this->runRotate();
         } elseif ($this->getArg('test')) {
             $this->runTestMessage();
@@ -90,7 +74,6 @@ class FireGento_Logger_Shell extends Mage_Shell_Abstract
 Usage:  php -f logger.php -- [options]
         php -f logger.php -- clean --days 1
 
-  clean             Clean Logs
   --days <days>     Save log, days. (Minimum 1 day, if defined - ignoring system value)
   test              Log a test message to the configured logs
   --message <text>  Message to log. Optional.

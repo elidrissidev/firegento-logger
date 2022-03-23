@@ -35,12 +35,6 @@
         </reference>
     </adminhtml_firegento_head>
 
-    <adminhtml_logger_index>
-        <reference name="content">
-            <block type="firegento_logger/adminhtml_logger" name="logger" />
-        </reference>
-    </adminhtml_logger_index>
-
     <adminhtml_logger_test>
         <update handle="adminhtml_firegento_head" />
         <reference name="content">
@@ -65,11 +59,4 @@
         </reference>
     </adminhtml_logger_reportview>
 
-    <adminhtml_logger_view>
-        <update handle="adminhtml_firegento_head" />
-        <reference name="content">
-            <block type="firegento_logger/adminhtml_logger_view" name="logger_view"
-                   template="firegento_logger/detail.view.phtml"/>
-        </reference>
-    </adminhtml_logger_view>
 </layout>

@@ -27,18 +27,6 @@
  */
 class FireGento_Logger_Adminhtml_LoggerController extends Mage_Adminhtml_Controller_Action
 {
-    protected $_loggerEntry;
-
-    /**
-     * Show grid viewer
-     */
-    public function indexAction()
-    {
-        $this->loadLayout();
-        $this->_setActiveMenu('system/firegento_logger/grid_viewer');
-        $this->renderLayout();
-    }
-
     /**
      * Test the logger
      */
@@ -49,37 +37,6 @@ class FireGento_Logger_Adminhtml_LoggerController extends Mage_Adminhtml_Control
     }
 
     /**
-     * Show the details of a log entry
-     */
-    public function viewAction()
-    {
-        $this->loadLayout();
-        Mage::register('current_loggerentry', $this->_getLoggerEntry());
-        $this->_title("Logger Entry #" . $this->_getLoggerEntry()->getId());
-        $this->renderLayout();
-    }
-
-    /**
-     * Get the logger entry
-     *
-     * @return FireGento_Logger_Model_Db_Entry the entry
-     */
-    protected function _getLoggerEntry()
-    {
-        if (isset($this->_loggerEntry)) {
-            return $this->_loggerEntry;
-        }
-
-        $loggerEntry = Mage::getModel('firegento_logger/db_entry');
-        if ($this->getRequest()->getParam('loggerentry_id')) {
-            $loggerEntry->load($this->getRequest()->getParam('loggerentry_id'));
-        }
-
-        $this->_loggerEntry = $loggerEntry;
-        return $this->_loggerEntry;
-    }
-
-    /**
      * Show the log viewer
      */
     public function liveViewAction()
@@ -87,33 +44,6 @@ class FireGento_Logger_Adminhtml_LoggerController extends Mage_Adminhtml_Control
         $this->loadLayout();
         $this->_setActiveMenu('system/firegento_logger/live_viewer');
         $this->renderLayout();
-    }
-
-    /**
-     * Action to do mass deletion
-     */
-    public function massDeleteAction()
-    {
-        $ids = $this->getRequest()->getParam('log');
-        if (!is_array($ids)) {
-            Mage::getSingleton('adminhtml/session')
-                ->addError(Mage::helper('firegento_logger')->__('Please select entries.'));
-        } else {
-            try {
-                $logModel = Mage::getModel('firegento_logger/db_entry');
-                foreach ($ids as $id) {
-                    $logModel->load($id)->delete();
-                }
-                Mage::getSingleton('adminhtml/session')->addSuccess(
-                    Mage::helper('firegento_logger')->__(
-                        'Total of %d record(s) were deleted.', count($ids)
-                    )
-                );
-            } catch (Exception $e) {
-                Mage::getSingleton('adminhtml/session')->addError($e->getMessage());
-            }
-        }
-        $this->_redirect('*/*/index');
     }
 
     /**
