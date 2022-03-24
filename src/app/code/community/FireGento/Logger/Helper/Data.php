@@ -209,44 +209,43 @@ class FireGento_Logger_Helper_Data extends Mage_Core_Helper_Abstract
             $debugBacktrace = debug_backtrace();
             // Attempt to remove extra backtrace frames
             $firstFrameIndex = 0;
+            $frameCount = 0;
             foreach ($debugBacktrace as $index => $frame) {
-                // Find the first Zend_Log::log frame
-                if ($firstFrameIndex === 0) {
-                    if (($frame['class'] ?? NULL) === Zend_Log::class && $frame['function'] === 'log') {
+                $frameClass = $frame['class'] ?? NULL;
+                $frameFunction = $frame['function'] ?? NULL;
+                // Find the first frame calling Zend_Log::log
+                if ($frameCount === 0) {
+                    if ($frameClass === Zend_Log::class && $frameFunction === 'log') {
                         $firstFrameIndex = $index;
+                        $frameCount++;
                     }
                     continue;
                 }
-                // Next, Mage::log or Mage::logException
-                if (($frame['class'] ?? NULL) === Mage::class) {
-                    if ($frame['function'] === 'log') {
-                        $firstFrameIndex = $index;
-                        continue;
-                    }
-                    if ($frame['function'] === 'logException' && isset($frame['args'][0])) {
-                        $event->setException($frame['args'][0]);
-                        $debugBacktrace = [[ // Don't record backtrace for Mage::logException
-                            'file' => $event->getException()->getFile(),
-                            'line' => $event->getException()->getLine(),
-                        ]];
-                        $firstFrameIndex = 0;
-                        break;
-                    }
-                }
-                // Next, an error handler
-                if ((count($frame['args']) === 4 || count($frame['args']) === 5)
-                    && array_key_exists(2, $frame['args']) && ($frame['file'] ?? NULL) === $frame['args'][2]
-                    && array_key_exists(3, $frame['args']) && ($frame['line'] ?? NULL) === $frame['args'][3]
-                ) {
+                // Next, a frame calling Mage::log
+                if ($frameCount === 1 && $frameClass === Mage::class && $frameFunction === 'log') {
                     $firstFrameIndex = $index;
+                    $frameCount++;
                     continue;
                 }
-                // Next, an empty frame from an internal function
-                if (empty($frame['file']) && empty($frame['line'])) {
-                    // Copy the file and line from the next frame to match the behavior of exceptions
-                    $debugBacktrace[$index]['file'] = $debugBacktrace[$index + 1]['file'] ?? NULL;
-                    $debugBacktrace[$index]['line'] = $debugBacktrace[$index + 1]['line'] ?? NULL;
+                // Next, a frame calling Mage::logException
+                if ($frameCount === 2 && $frameClass === Mage::class && $frameFunction === 'logException') {
+                    $event->setException($frame['args'][0]);
+                    $debugBacktrace = [[ // Don't record backtrace for Mage::logException
+                        'file' => $event->getException()->getFile(),
+                        'line' => $event->getException()->getLine(),
+                    ]];
+                    $firstFrameIndex = 0;
+                    break;
+                }
+                // Or, a frame calling an error handler
+                if (($frameCount === 2 && $frameFunction === 'mageCoreErrorHandler') || ($frameCount === 3 && $frameFunction === 'handlePhpError')) {
                     $firstFrameIndex = $index;
+                    $frameCount++;
+                    if (empty($frame['file']) && empty($frame['line'])) {
+                        // Copy the file and line from the next frame to match the behavior of exceptions
+                        $debugBacktrace[$index]['file'] = $debugBacktrace[$index + 1]['file'] ?? NULL;
+                        $debugBacktrace[$index]['line'] = $debugBacktrace[$index + 1]['line'] ?? NULL;
+                    }
                     continue;
                 }
                 break;
