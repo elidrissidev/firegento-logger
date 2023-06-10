@@ -94,7 +94,6 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
                         return ! $integration instanceof ErrorListenerIntegration;
                     });
                 },
-                'release' => Mage::helper('core')->getAppRelease(),
             ]);
             $options = SentrySdk::getCurrentHub()->getClient()->getOptions();
 
@@ -112,28 +111,24 @@ class FireGento_Logger_Model_Sentry extends FireGento_Logger_Model_Abstract
             // Send personally identifiable information
             $options->setSendDefaultPii(TRUE);
 
+            // Add remote IP to the user info
+            if ($ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null) {
+                configureScope(function (Scope $scope) use ($ipAddress): void {
+                    $scope->setUser(['ip_address' => $ipAddress]);
+            });
+            }
+
             // Add session data to the user info
-            if (function_exists('session_id') && session_id()) {
+            if (session_status() === PHP_SESSION_ACTIVE) {
                 configureScope(function (Scope $scope): void {
-                    $user = array(
-                        'id' => session_id(),
-                    );
-                    if ( ! empty($_SERVER['REMOTE_ADDR'])) {
-                        $user['ip_address'] = $_SERVER['REMOTE_ADDR'];
-                    }
-                    if ( ! empty($_SESSION)) {
-                        $user['data'] = $_SESSION;
-                    }
-                    $scope->setUser($user);
+                    $scope->setUser(['data' => $_SESSION]);
                 });
             }
 
-            // Add the installation code as indexed and searchable tag
-            if ($installCode = Mage::helper('mwe')->getInstallCode()) {
-                configureScope(function (Scope $scope) use ($installCode): void {
-                    $scope->setTag('instance_uid', $installCode);
-                });
-            }
+            configureScope(function (Scope $scope): void {
+                Mage::dispatchEvent('logger_sentry_php_configureScope', ['hub' => SentrySdk::getCurrentHub(), 'scope' => $scope]);
+            });
+            Mage::register('logger_sentry_hub', SentrySdk::getCurrentHub());
 
             self::$_isInitialized = TRUE;
         }

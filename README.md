@@ -5,64 +5,57 @@
 
 The purpose of this project is to have a simple framework for different logging adapters.
 
-Originally developed as Hackathon_Logger but moved forewards and will now actively supported by
-firegento community.
+~~Originally developed as Hackathon_Logger but moved forwards and will now actively be supported by
+firegento community.~~
+Seems to no longer be actively supported by Firegento so forked here. Only Sentry is supported in this version.
 
 See the [**Usage**](#usage) Chapter below to see how to use it.
 
 Please be aware of the following restrictions:
 
-* The ProxiBlue NewRelic extension uses the same logic to log to NewRelic and will block
-  FireGento Logger extension unless you [revise its config.xml file](https://github.com/ProxiBlue/NewRelic#compatibility-with-firegento-logger).
-
 Installation Instructions
 -------------------------
 
-### Via modman
+Assuming you already have Magento setup with Composer:
 
-- Install [modman](https://github.com/colinmollenhour/modman)
-- Use the command from your Magento installation folder: `modman clone https://github.com/firegento/firegento-logger`
-
-### Via composer
-- Install [composer](http://getcomposer.org/download/)
-- Install [Magento Composer](https://github.com/magento-hackathon/magento-composer-installer)
-- Create a composer.json into your project like the following sample:
-
-```json
-{
-    ...
-    "require": {
-        "firegento/logger":"*"
-    },
-    "repositories": [
-	    {
-            "type": "composer",
-            "url": "http://packages.firegento.com"
-        }
-    ],
-    "extra":{
-        "magento-root-dir": "./"
-    }
-}
-```
-
-- Then from your `composer.json` folder: `php composer.phar install` or `composer install`
-
-### Manually
-- You can copy the files from the folders of this repository to the same folders of your installation
-
-
-### Installation in ALL CASES
-* Clear the cache, logout from the admin panel and then login again.
-
-Uninstallation
---------------
-* Remove all extension files from your Magento installation
+- Add this snippet to `composer.json` to enable this repo as a package respository:
+  ```json
+      "repositories": [
+        {
+            "type": "vcs",
+            "url": "https://github.com/colinmollenhour/firegento-logger.git"
+        },
+      ],
+      ...
+  ```
+- Run `composer require firegento/logger`
+- Use `composer require sentry/sdk "^3.0"` if you plan to use Sentry
+- Clear the Magento cache
 
 ## Usage
 
 Configure the different loggers in `System > Configuration > Advanced > Firegento Logger`
 
+### Sentry
+
+Add event observers for `logger_sentry_php_configureScope` and `logger_sentry_javascript_configureScope`
+to customize your environment and scope. 
+
+    public function sentryConfigureScopePhp(Varien_Event_Observer $observer)
+    {
+        /** @var \Sentry\State\Hub $hub */
+        $hub = $observer->getHub();
+        /** @var \Sentry\State\Scope $scope */
+        $scope = $observer->getScope();
+
+        $hub->getClient()->getOptions()->setRelease('1.0');
+        $scope->setUser(['id' => 1]);
+    }
+
+    public function sentryConfigureScopeJavascript(Varien_Event_Observer $observer)
+    {
+        echo "scope.setUser({\"id\": 1})\n";
+    }
 
 ## Further Information
 

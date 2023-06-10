@@ -1,28 +1,33 @@
 <?php /* @var $this Mage_Core_Block_Template */ ?>
-<?php if (Mage::getStoreConfigFlag('logger/sentry/adminhtml_enabled') && Mage::getStoreConfig('logger/sentry/public_dsn')): ?>
+<?php
+/**
+ * @var \Sentry\State\Hub $hub
+ */
+if (Mage::getStoreConfigFlag('logger/sentry/adminhtml_enabled')
+    && Mage::getStoreConfig('logger/sentry/public_dsn')
+    && ($hub = Mage::registry('logger_sentry_hub'))
+): ?>
 <script
-  src="https://browser.sentry-cdn.com/6.17.9/bundle.min.js"
-  integrity="sha384-bg8ATkDzxNiciak2tVJV/r+DHguxvOKHQqRi2SKP2mc8IOZphuG/bYdsyBm+KQC3"
-  crossorigin="anonymous"
+    src="https://browser.sentry-cdn.com/7.54.0/bundle.min.js"
+    integrity="sha384-EmlJLN9Q0yu0/2UUCIYnEM88jpQ7xUhtNI2ZeXb/ci3cwoAoIQl350N4PQPlMbP5"
+    crossorigin="anonymous"
 ></script>
 <script type="text/javascript">
 Sentry.init({
   dsn: <?= json_encode(Mage::getStoreConfig('logger/sentry/public_dsn')) ?>,
   debug: <?php if (Mage::getIsDeveloperMode()): ?>true<?php else: ?>false<?php endif; ?>,
   attachStacktrace: true,
-  release: <?= json_encode(Mage::helper('core')->getAppRelease()) ?>,
-  environment: <?= json_encode(trim(Mage::helper('firegento_logger')->getLoggerConfig('sentry/environment')) ?: NULL) ?>,
+  release: <?= json_encode($hub->getClient()->getOptions()->getRelease()) ?>,
+  environment: <?= json_encode($hub->getClient()->getOptions()->getEnvironment()) ?>
 });
 Sentry.configureScope(scope => {
     <?php if (Mage::getSingleton('admin/session')->isLoggedIn()): ?>
     scope.setUser({
-      id: <?= intval(Mage::getSingleton('admin/session')->getUser()->getId()) ?>,
-      username: <?= json_encode(Mage::getSingleton('admin/session')->getUser()->getUsername()) ?>,
+        id: <?= intval(Mage::getSingleton('admin/session')->getUser()->getId()) ?>,
+        username: <?= json_encode(Mage::getSingleton('admin/session')->getUser()->getUsername()) ?>,
     })
     <?php endif; ?>
-    <?php if ($installCode = Mage::helper('mwe')->getInstallCode()): ?>
-    scope.setTag('instance_uid', <?= json_encode($installCode) ?>);
-    <?php endif; ?>
+    <?php Mage::dispatchEvent('logger_sentry_javascript_configureScope'); ?>
 });
 </script>
 <?php endif ?>
